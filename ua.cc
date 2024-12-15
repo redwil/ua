@@ -72,6 +72,9 @@ static char __help[] =
 "  -s <sep>:   separator (default SPACE)\n"
 "  -p:         also print the hash value\n"
 "  -b <bsize>: set internal buffer size (default 1024)\n"
+"  -q          quote output filenames\n"
+"  -d          different hash for same size, name and path roots\n"
+"  -0          accept null terminated strings on stdin\n"
 "  -h:         this help (-vh more verbose help)\n"
 "  -           read file names from stdin\n";
 
@@ -178,6 +181,9 @@ int main(int argc, char* const * argv) {
    int max = 0; // max chars to consider, ALL
 
    bool comm = true; // from command line
+   bool quote = false; // quote output file name
+   bool diff = false; // different hash for same size, name and path roots
+   bool ntstr = false; // accept null terminated strings on stdin
 
    std::string sep(" "); // default sep
 
@@ -187,7 +193,7 @@ int main(int argc, char* const * argv) {
    }
 
    int opt;
-   while((opt = ::getopt(argc,argv,"hb:viws:m:2pn")) != -1) {
+   while((opt = ::getopt(argc,argv,"hb:viws:m:2pnqd")) != -1) {
       switch(opt) {
          case 'b':
             BN = ::atoi(::optarg);
@@ -199,7 +205,7 @@ int main(int argc, char* const * argv) {
          case 'm':
             max = ::atoi(::optarg);
             break;
-         case 'i':
+         case 'i':throw
             ic = true;
             break;
          case 'v':
@@ -220,6 +226,14 @@ int main(int argc, char* const * argv) {
          case 'n':
             count = false;
             break;
+         case 'q':
+            quote = true;
+            break;
+         case 'd':
+            diff = true;
+            break;
+         case '0':
+            ntstr = true;
          case 'h':
             __phelp(v);
             return 0;
