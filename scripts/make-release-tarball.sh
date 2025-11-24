@@ -12,12 +12,13 @@ set -euo pipefail
 
 usage() {
     cat <<'EOF'
-Usage: make-release-tarball.sh [--version VERSION] [--build-dir DIR]
+Usage: make-release-tarball.sh [--version VERSION] [--build-dir DIR] [--allow-mismatch]
 
 Options:
   --version VERSION   Version string to embed in the tarball name. If omitted,
                       git describe is used, then __UA_VERSION fallback.
   --build-dir DIR     Directory containing built binaries (ua, kua).
+  --allow-mismatch    Skip the code/tag version consistency check.
   -h, --help          Show this help.
 EOF
 }
@@ -26,6 +27,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="${ROOT}/dist"
 BUILD_DIR=""
 VERSION=""
+ALLOW_MISMATCH=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -36,6 +38,10 @@ while [[ $# -gt 0 ]]; do
         --build-dir)
             BUILD_DIR="$2"
             shift 2
+            ;;
+        --allow-mismatch)
+            ALLOW_MISMATCH=true
+            shift
             ;;
         -h|--help)
             usage
@@ -55,6 +61,13 @@ if [[ -z "$VERSION" ]]; then
     else
         VERSION=$(grep -oP '__UA_VERSION "\\K[^"]+' "$ROOT/src/ua.cc" 2>/dev/null || echo "dev")
     fi
+fi
+
+CODE_VERSION=$(grep -oP '__UA_VERSION "\\K[^"]+' "$ROOT/src/ua.cc" 2>/dev/null || echo "")
+if [[ -n "$CODE_VERSION" && "$VERSION" != "$CODE_VERSION" && "$ALLOW_MISMATCH" = false ]]; then
+    echo "Version mismatch: code (__UA_VERSION)='$CODE_VERSION' vs requested='$VERSION'." >&2
+    echo "Update the code version or rerun with --allow-mismatch to force." >&2
+    exit 1
 fi
 
 if [[ -z "$BUILD_DIR" ]]; then

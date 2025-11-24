@@ -50,7 +50,7 @@
 // will provide help on using the program
 
 #if !defined(__UA_VERSION)
-#define __UA_VERSION "1.1.0"
+#define __UA_VERSION "1.1.1"
 #endif
 
 #include <filei.h>

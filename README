@@ -63,6 +63,10 @@ an install-ready layout:
   usr/share/man/man1/{ua.1,kua.1}
   usr/share/doc/ua/{README,NEWS,ChangeLog,AUTHORS,COPYING,INSTALL}
 
+The tarball helper will fail if the requested version differs from the
+version embedded in the code (__UA_VERSION), to keep tags/releases in sync.
+Use --allow-mismatch to override (not recommended).
+
 PROJECT STRUCTURE:
 ==================
 
