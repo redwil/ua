@@ -48,6 +48,8 @@
 #include <filei.h>
 #include <cstdlib>
 #include <cstring>
+#include <sstream>
+#include <iomanip>
 
 extern "C" {
 #include <stdio.h>
@@ -62,6 +64,9 @@ static char __help[] =
 "  -w:         ignore white space\n"
 "  -n:         do not ask the FS for file size\n"
 "  -v:         verbose output (prints stuff to stderr), verbose help\n" 
+"  -m <max>:   consider only the first <max> bytes\n"
+"  -s <sep>:   separator (default SPACE)\n"
+"  -p:         also print the hash value\n"
 "  -b <bsize>: set internal buffer size (default 1024)\n"
 "  -a <alg>:   hash algorithm: md5, sha1, sha256, b3, xxh64\n"
 "  -q:         quote file names with single quotes\n"
@@ -69,7 +74,8 @@ static char __help[] =
 "  -h:         this help (-vh more verbose help)\n"
 "  --long:     long options mirror short ones (e.g., --file, --help,\n"
 "              --version, --ignore-case, --ignore-white, --no-size,\n"
-"              --verbose, --buffer, --algorithm, --quote)\n"
+"              --verbose, --max, --separator, --print-hash,\n"
+"              --buffer, --algorithm, --quote)\n"
 "  -           read file names from stdin\n";
 
 static char __vhelp[] =
@@ -117,9 +123,12 @@ int main(int argc, char* const * argv) {
    bool ic = false; // ignore case
    bool iw = false; // ignore white space
    bool v = false; // verbose
+   bool ph = false; // print hash
    int BN = 1024; // buffer size
    bool count = true; // take size into account
    bool quote = false; // quote file names with single quotes
+   int max = 0; // max bytes to consider
+   std::string sep(" "); // separator
 
    bool comm = true; // from command line
 
@@ -140,13 +149,16 @@ int main(int argc, char* const * argv) {
       {"no-size",     no_argument,       0, 'n'},
       {"verbose",     no_argument,       0, 'v'},
       {"buffer",      required_argument, 0, 'b'},
+      {"max",         required_argument, 0, 'm'},
+      {"separator",   required_argument, 0, 's'},
+      {"print-hash",  no_argument,       0, 'p'},
       {"algorithm",   required_argument, 0, 'a'},
       {"quote",       no_argument,       0, 'q'},
       {0,0,0,0}
    };
 
    int opt;
-   while((opt = ::getopt_long(argc,argv,"f:hb:viwna:qV", long_opts, nullptr)) != -1) {
+   while((opt = ::getopt_long(argc,argv,"f:hb:viwna:qVm:s:p", long_opts, nullptr)) != -1) {
       switch(opt) {
          case 'f':
             cfile = std::string(::optarg);
@@ -170,8 +182,17 @@ int main(int argc, char* const * argv) {
          case 'n':
             count = false;
             break;
+         case 'm':
+            max = ::atoi(::optarg);
+            break;
+         case 's':
+            sep = std::string(::optarg);
+            break;
          case 'q':
             quote = true;
+            break;
+         case 'p':
+            ph = true;
             break;
          case 'V':
             version_only = true;
@@ -231,6 +252,24 @@ int main(int argc, char* const * argv) {
       }
    }
 
+   std::string hash_hex;
+   if (ph) {
+      try {
+         filei ref(cfile, ic, iw, max, BN, alg);
+         std::ostringstream oss;
+         oss << std::hex;
+         for(int i=0; i<ref.hash_len(); ++i) {
+            int hi = ref[i] >> 4 & 0x0f;
+            int lo = ref[i] & 0x0f;
+            oss << hi << lo;
+         }
+         hash_hex = oss.str();
+      } catch(const char* e) {
+         std::cerr << "Could not hash " << cfile << ": " << e << std::endl;
+         return 1;
+      }
+   }
+
    for(int i = ::optind;;) {
       char* file;
       if (comm) {
@@ -249,9 +288,14 @@ int main(int argc, char* const * argv) {
             const off_t sz = filei::fsize(file);
             if (n != sz) continue;
          }
-         if (filei::eq(cfile,file,ic,iw,0,BN,alg)) {
-            if (quote) std::cout << "'" << file << "'" << std::endl;
-            else std::cout << file << std::endl;
+         if (filei::eq(cfile,file,ic,iw,max,BN,alg)) {
+            if (ph) {
+               std::cout << hash_hex << sep;
+            }
+            if (quote) std::cout << "'";
+            std::cout << file;
+            if (quote) std::cout << "'";
+            std::cout << std::endl;
          }
       } catch(const char* e) {
          if (v) std::cerr << "Skipping " << file << ", " << e << std::endl;
