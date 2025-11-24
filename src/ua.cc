@@ -50,20 +50,27 @@
 // will provide help on using the program
 
 #if !defined(__UA_VERSION)
-#define __UA_VERSION "1.0"
+#define __UA_VERSION "1.1.0"
 #endif
 
 #include <filei.h>
+#include <cstdlib>
 #include <cstring>
 #include <thread>
 #include <future>
 #include <vector>
 #include <mutex>
 #include <map>
+#include <unordered_map>
+#include <unordered_set>
+#include <sstream>
 
 extern "C" {
 #include <stdio.h>
 #include <getopt.h>
+#include <limits.h>
+#include <sys/stat.h>
+#include <unistd.h>
 }
 
 static char __help[] = 
@@ -82,7 +89,15 @@ static char __help[] =
 "  -q:         quote file names with single quotes\n"
 "  -t <num>:   number of threads (default: auto-detect)\n"
 "  -M:         disable adaptive milestone comparison\n"
+"  -F:         ignore filename differences (process same real path once)\n"
+"  -L:         annotate output with link type (symlink/hardlink)\n"
+"  -V:         print version and exit\n"
 "  -h:         this help (-vh more verbose help)\n"
+"  --long:     long options mirror the short ones (e.g., --help, --version,\n"
+"              --ignore-case, --ignore-white, --no-size, --verbose,\n"
+"              --max, --two-stage, --separator, --print-hash, --buffer,\n"
+"              --algorithm, --quote, --threads, --no-milestone,\n"
+"              --ignore-filename, --annotate-links)\n"
 "  -           read file names from stdin\n";
 
 static char __vhelp[] =
@@ -150,27 +165,64 @@ static char __vhelp[] =
 "Blame\n\n"
 "  istvan.hernadvolgyi@gmail.com\n\n";
 
+struct PathInfo {
+   std::string canonical_path;
+   bool is_symlink{false};
+   bool is_hardlink{false};
+   std::string symlink_target;
+};
+
+static PathInfo collect_path_info(const std::string& path) {
+   PathInfo info;
+   info.canonical_path = path;
+
+   struct stat lst {};
+   if (::lstat(path.c_str(), &lst) == 0) {
+      info.is_symlink = S_ISLNK(lst.st_mode);
+      if (info.is_symlink) {
+         char linkbuf[PATH_MAX + 1];
+         ssize_t len = ::readlink(path.c_str(), linkbuf, PATH_MAX);
+         if (len >= 0) {
+            linkbuf[len] = '\0';
+            info.symlink_target.assign(linkbuf);
+         }
+         struct stat target {};
+         if (::stat(path.c_str(), &target) == 0) {
+            lst = target;
+         }
+      }
+      info.is_hardlink = S_ISREG(lst.st_mode) && lst.st_nlink > 1;
+   }
+
+   char* rp = ::realpath(path.c_str(), nullptr);
+   if (rp) {
+      info.canonical_path.assign(rp);
+      std::free(rp);
+   }
+
+   return info;
+}
+
+
+static void __pversion() {
+   std::cout << "ua version: " << __UA_VERSION 
+#if defined(__UA_USEHASH)
+             << "_hash"
+#else
+             << "_tree"
+#endif
+             << std::endl;
+}
 
 static void __phelp(bool v) {
+   __pversion();
+   std::cout << std::endl;
    if (v) {
       std::cout << "Find identical sets of files." << std::endl << std::endl
                 << __help << std::endl << __vhelp 
-                << "Version: " << __UA_VERSION 
-#if defined(__UA_USEHASH)
-                << "_hash"
-#else
-                << "_tree"
-#endif
-                << std::endl << std::endl;
+                << std::endl;
    } else {
       std::cout << __help << std::endl
-                << "version: " << __UA_VERSION 
-#if defined(__UA_USEHASH)
-                << "_hash"
-#else
-                << "_tree"
-#endif
-                << std::endl << std::endl
                 << "Type ua -vh for more help. If in doubt, one of " 
                 << std::endl << std::endl
                 << "$ find ... | ua -" << std::endl
@@ -293,6 +345,9 @@ int main(int argc, char* const * argv) {
    bool count = true; // take size into account
    bool quote = false; // quote file names with single quotes
    bool milestone = true; // use adaptive milestone comparison
+   bool ignore_filename = false; // ignore repeated references to the same real path
+   bool annotate_links = false; // append link info to output
+   bool version_only = false; // print version and exit
 
    int max = 0; // max chars to consider, ALL
    int thread_count = std::thread::hardware_concurrency(); // number of threads
@@ -308,8 +363,29 @@ int main(int argc, char* const * argv) {
       return 1;
    }
 
+   static struct option long_opts[] = {
+      {"help",              no_argument,       0, 'h'},
+      {"version",           no_argument,       0, 'V'},
+      {"ignore-case",       no_argument,       0, 'i'},
+      {"ignore-white",      no_argument,       0, 'w'},
+      {"no-size",           no_argument,       0, 'n'},
+      {"verbose",           no_argument,       0, 'v'},
+      {"max",               required_argument, 0, 'm'},
+      {"two-stage",         no_argument,       0, '2'},
+      {"separator",         required_argument, 0, 's'},
+      {"print-hash",        no_argument,       0, 'p'},
+      {"buffer",            required_argument, 0, 'b'},
+      {"algorithm",         required_argument, 0, 'a'},
+      {"quote",             no_argument,       0, 'q'},
+      {"threads",           required_argument, 0, 't'},
+      {"no-milestone",      no_argument,       0, 'M'},
+      {"ignore-filename",   no_argument,       0, 'F'},
+      {"annotate-links",    no_argument,       0, 'L'},
+      {0,0,0,0}
+   };
+
    int opt;
-   while((opt = ::getopt(argc,argv,"hb:viws:m:2pna:qt:M")) != -1) {
+   while((opt = ::getopt_long(argc,argv,"hb:viws:m:2pna:qt:MFLV", long_opts, nullptr)) != -1) {
       switch(opt) {
          case 'b':
             BN = ::atoi(::optarg);
@@ -336,6 +412,15 @@ int main(int argc, char* const * argv) {
             break;
          case 'w':
             iw = true;
+            break;
+         case 'F':
+            ignore_filename = true;
+            break;
+         case 'L':
+            annotate_links = true;
+            break;
+         case 'V':
+            version_only = true;
             break;
          case 's':
             sep = std::string(::optarg);
@@ -375,6 +460,11 @@ int main(int argc, char* const * argv) {
       }
    }
 
+   if (version_only) {
+      __pversion();
+      return 0;
+   }
+
    if (stage && !max) {
       std::cerr << "The two stage algorithm requires -m set!" << std::endl;
       return 1;
@@ -403,6 +493,8 @@ int main(int argc, char* const * argv) {
 
    // Collect all file names first
    std::vector<std::string> all_files;
+   std::unordered_map<std::string, PathInfo> path_info;
+   std::unordered_set<std::string> seen_real_paths;
    
    for(int i = ::optind;;) {
       char* file;
@@ -414,19 +506,56 @@ int main(int argc, char* const * argv) {
          if (std::cin.eof()) break;
          file = fileb;
       }
-      all_files.push_back(file);
+      std::string path(file);
+      PathInfo info = collect_path_info(path);
+      std::string dedup_key = ignore_filename ? info.canonical_path : path;
+      if (ignore_filename) {
+         if (!seen_real_paths.insert(dedup_key).second) {
+            if (v) std::cerr << "Skipping alias " << path << " -> " << dedup_key << std::endl;
+            continue;
+         }
+      }
+      path_info[path] = info;
+      all_files.push_back(path);
+   }
+
+   auto link_annotation = [&](const std::string& path) -> std::string {
+      if (!annotate_links) return std::string();
+      auto it = path_info.find(path);
+      if (it == path_info.end()) return std::string();
+      const auto& meta = it->second;
+      if (meta.is_symlink) {
+         if (meta.symlink_target.empty()) return " [symlink]";
+         return " [symlink->" + meta.symlink_target + "]";
+      }
+      if (meta.is_hardlink) return " [hardlink]";
+      return std::string();
+   };
+
+   auto format_path = [&](const std::string& path) {
+      std::ostringstream oss;
+      if (quote) oss << "'";
+      oss << path;
+      if (quote) oss << "'";
+      oss << link_annotation(path);
+      return oss.str();
+   };
+   std::function<std::string(const std::string&)> annotate_cb;
+   if (annotate_links) {
+      annotate_cb = link_annotation;
    }
 
    // Process files in parallel batches
-   if (thread_count > 1 && all_files.size() > thread_count) {
+   size_t thread_count_sz = static_cast<size_t>(thread_count);
+   if (thread_count > 1 && all_files.size() > thread_count_sz) {
       std::mutex mtx;
       std::vector<std::future<void>> futures;
       
-      size_t batch_size = all_files.size() / thread_count;
-      size_t remainder = all_files.size() % thread_count;
+      size_t batch_size = all_files.size() / thread_count_sz;
+      size_t remainder = all_files.size() % thread_count_sz;
       
       size_t start = 0;
-      for (int i = 0; i < thread_count; ++i) {
+      for (size_t i = 0; i < thread_count_sz; ++i) {
          size_t end = start + batch_size + (i < remainder ? 1 : 0);
          std::vector<std::string> batch(all_files.begin() + start, all_files.begin() + end);
          
@@ -465,11 +594,7 @@ int main(int argc, char* const * argv) {
       // exactly two in set, and don't care about printing hash
       else if (fct->second.size() == 2 && !ph) {
          if (filei::eq(fct->second[0],fct->second[1],ic,iw,0,BN,alg)) {
-            if (quote) {
-               std::cout << "'" << fct->second[0] << "'" << sep << "'" << fct->second[1] << "'" << std::endl;
-            } else {
-               std::cout << fct->second[0] << sep << fct->second[1] << std::endl;
-            }
+            std::cout << format_path(fct->second[0]) << sep << format_path(fct->second[1]) << std::endl;
          } 
          continue;
       }
@@ -537,7 +662,7 @@ int main(int argc, char* const * argv) {
          }
       } else resp = & cands.common();
 
-      fset_t::produce(*resp,std::cout,sep,ph,quote);
+      fset_t::produce(*resp,std::cout,sep,ph,quote,annotate_cb);
    }
 
    return 0;

@@ -42,10 +42,11 @@
 // will provide help on using the program
 
 #if !defined(__KUA_VERSION)
-#define __KUA_VERSION "1.0"
+#define __KUA_VERSION "1.1.0"
 #endif
 
 #include <filei.h>
+#include <cstdlib>
 #include <cstring>
 
 extern "C" {
@@ -64,7 +65,11 @@ static char __help[] =
 "  -b <bsize>: set internal buffer size (default 1024)\n"
 "  -a <alg>:   hash algorithm: md5, sha1, sha256, b3, xxh64\n"
 "  -q:         quote file names with single quotes\n"
+"  -V:         print version and exit\n"
 "  -h:         this help (-vh more verbose help)\n"
+"  --long:     long options mirror short ones (e.g., --file, --help,\n"
+"              --version, --ignore-case, --ignore-white, --no-size,\n"
+"              --verbose, --buffer, --algorithm, --quote)\n"
 "  -           read file names from stdin\n";
 
 static char __vhelp[] =
@@ -77,18 +82,26 @@ static char __vhelp[] =
 "Blame\n\n"
 "  istvan.hernadvolgyi@gmail.com\n\n";
 
+static void __pversion() {
+   std::cout << "kua version: " << __KUA_VERSION 
+#if defined(__UA_USEHASH)
+             << "_hash"
+#else
+             << "_tree"
+#endif
+             << std::endl;
+}
 
 static void __phelp(bool v) {
+   __pversion();
+   std::cout << std::endl;
    if (v) {
       std::cout << "Find files identical to the given one." 
                 << std::endl << std::endl
                 << __help << std::endl << __vhelp 
-                << "Version: " << __KUA_VERSION 
                 << std::endl << std::endl;
    } else {
       std::cout << __help << std::endl
-                << "version: " << __KUA_VERSION 
-                << std::endl << std::endl
                 << "Type kua -vh for more help. If in doubt,"
                 << std::endl << std::endl
                 << "$ find ... | kua -f <file> -" << std::endl;
@@ -111,14 +124,29 @@ int main(int argc, char* const * argv) {
    bool comm = true; // from command line
 
    filei_hash_alg alg = filei_hash_alg::MD5;
+   bool version_only = false; // print version and exit
 
    if (argc <= 1) {
       __phelp(false);
       return 1;
    }
 
+   static struct option long_opts[] = {
+      {"file",        required_argument, 0, 'f'},
+      {"help",        no_argument,       0, 'h'},
+      {"version",     no_argument,       0, 'V'},
+      {"ignore-case", no_argument,       0, 'i'},
+      {"ignore-white",no_argument,       0, 'w'},
+      {"no-size",     no_argument,       0, 'n'},
+      {"verbose",     no_argument,       0, 'v'},
+      {"buffer",      required_argument, 0, 'b'},
+      {"algorithm",   required_argument, 0, 'a'},
+      {"quote",       no_argument,       0, 'q'},
+      {0,0,0,0}
+   };
+
    int opt;
-   while((opt = ::getopt(argc,argv,"f:hb:viws:m:na:q")) != -1) {
+   while((opt = ::getopt_long(argc,argv,"f:hb:viwna:qV", long_opts, nullptr)) != -1) {
       switch(opt) {
          case 'f':
             cfile = std::string(::optarg);
@@ -145,6 +173,9 @@ int main(int argc, char* const * argv) {
          case 'q':
             quote = true;
             break;
+         case 'V':
+            version_only = true;
+            break;
          case 'h':
             __phelp(v);
             return 0;
@@ -163,6 +194,11 @@ int main(int argc, char* const * argv) {
             std::cerr << "Type " << argv[0] << " -h for options." << std::endl;
             return 1;
       }
+   }
+
+   if (version_only) {
+      __pversion();
+      return 0;
    }
 
    if (!cfile.size()) {

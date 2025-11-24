@@ -66,6 +66,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <functional>
 
 // Add OpenSSL hash sizes
 #define FILEI_MD5_LEN 16
@@ -126,6 +127,10 @@ class filei {
       static size_t buffc() { return __UABUFFSIZE; }
 
    public:
+
+      // thread-local buffer helpers (used by default to be thread-safe)
+      static void* tlocal_gbuff(size_t n);
+      static size_t tlocal_buffc();
 
       /** Constructor.
        *
@@ -372,9 +377,11 @@ class fset {
         * @param s separator (default " ")
         * @param ph print hash (if true, the first column is the hash)
         * @param quote quote file names with single quotes
+        * @param annotate optional callback to append metadata for a path
         */
       static void produce(const M& cmn, std::ostream& os,
-         const std::string& s = " ", bool ph = false, bool quote = false) {
+         const std::string& s = " ", bool ph = false, bool quote = false,
+         std::function<std::string(const std::string&)> annotate = {}) {
 
          for(it_t it= cmn.begin(); it != cmn.end(); ++it) {
             if (ph) { // print hash
@@ -388,11 +395,13 @@ class fset {
             if (quote) os << "'";
             os << it->first.path();
             if (quote) os << "'";
+            if (annotate) os << annotate(it->first.path());
             for(int i=0; i<(int)it->second.size();++i) {
                os << s;
                if (quote) os << "'";
                os << it->second[i];
                if (quote) os << "'";
+               if (annotate) os << annotate(it->second[i]);
             }
             os << std::endl;
          }

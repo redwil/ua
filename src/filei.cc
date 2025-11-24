@@ -51,6 +51,26 @@ void* (*filei::_gbuff)(size_t) = &filei::gbuff;
 size_t (*filei::_buffc)() = &filei::buffc;
 void (*filei::_relbuff)(void*) = 0;
 char filei::_buffer[__UABUFFSIZE];
+
+// Default to thread-local buffers for thread safety
+static thread_local std::vector<char> __filei_tbuffer;
+void* filei::tlocal_gbuff(size_t n) {
+   if (__filei_tbuffer.size() < n) __filei_tbuffer.resize(n);
+   return __filei_tbuffer.data();
+}
+
+size_t filei::tlocal_buffc() {
+   return __filei_tbuffer.size();
+}
+
+// Switch defaults to thread-local handlers
+static struct __filei_init {
+   __filei_init() {
+      filei::_gbuff = &filei::tlocal_gbuff;
+      filei::_buffc = &filei::tlocal_buffc;
+      filei::_relbuff = nullptr;
+   }
+} __filei_init_instance;
      
 filei::filei(const std::string& path, bool ic, bool iw, size_t m, size_t bs, filei_hash_alg alg)
 :_path(path),_h(0),_alg(alg)  {

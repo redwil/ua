@@ -1,3 +1,10 @@
+1.1.0
+	o add BLAKE3 and xxHash64 hashing, optional milestone comparison, and multi-threaded processing
+	o add ignore-filename (-F) and link annotation (-L) options; long-option aliases and version flag
+	o make hashing thread-safe with thread-local buffers to avoid race-induced mismatches
+	o add release tarball helper script (dist/) and tarball instructions
+	o align kua CLI with ua style (long options, version output, version bump)
+
 1.0
 
 	o initial release

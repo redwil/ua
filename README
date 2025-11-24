@@ -47,6 +47,17 @@ The project includes a convenient build script that supports both systems:
   $ ./build.sh -j4 cmake          # Build with CMake using 4 jobs
   $ ./build.sh --help             # Show all options
 
+RELEASE TARBALLS:
+=================
+
+Create a tarball for GitHub Releases after building:
+
+  $ ./build.sh cmake                                   # or autotools
+  $ ./scripts/make-release-tarball.sh --version v1.0.0
+
+The archive (ua-<version>-<os>-<arch>.tar.gz) is written to dist/ and
+includes binaries plus README/NEWS/ChangeLog/AUTHORS/COPYING/INSTALL.
+
 PROJECT STRUCTURE:
 ==================
 

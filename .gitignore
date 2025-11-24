@@ -159,4 +159,7 @@ dkms.conf
 .history
 .ionide
 
+# Local release artifacts
+dist/
+
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,c++,c,autotools
