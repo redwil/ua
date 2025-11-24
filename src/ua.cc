@@ -64,6 +64,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <sstream>
+#include <algorithm>
 
 extern "C" {
 #include <stdio.h>
@@ -594,7 +595,9 @@ int main(int argc, char* const * argv) {
       // exactly two in set, and don't care about printing hash
       else if (fct->second.size() == 2 && !ph) {
          if (filei::eq(fct->second[0],fct->second[1],ic,iw,0,BN,alg)) {
-            std::cout << format_path(fct->second[0]) << sep << format_path(fct->second[1]) << std::endl;
+            std::vector<std::string> sorted_pair{fct->second[0], fct->second[1]};
+            std::sort(sorted_pair.begin(), sorted_pair.end());
+            std::cout << format_path(sorted_pair[0]) << sep << format_path(sorted_pair[1]) << std::endl;
          } 
          continue;
       }

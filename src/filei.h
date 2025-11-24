@@ -63,6 +63,7 @@
 #include <map>
 
 #include <vector>
+#include <algorithm>
 
 #include <iostream>
 #include <iomanip>
@@ -384,6 +385,12 @@ class fset {
          std::function<std::string(const std::string&)> annotate = {}) {
 
          for(it_t it= cmn.begin(); it != cmn.end(); ++it) {
+            std::vector<std::string> paths;
+            paths.reserve(it->second.size() + 1);
+            paths.push_back(it->first.path());
+            for (const auto& p : it->second) paths.push_back(p);
+            std::sort(paths.begin(), paths.end());
+
             if (ph) { // print hash
                for(int i=0; i< it->first.hash_len(); ++i) {
                   int hi = it->first[i] >> 4 & 0x0f;
@@ -392,16 +399,12 @@ class fset {
                }
                os << s;
             }
-            if (quote) os << "'";
-            os << it->first.path();
-            if (quote) os << "'";
-            if (annotate) os << annotate(it->first.path());
-            for(int i=0; i<(int)it->second.size();++i) {
-               os << s;
+            for (size_t idx = 0; idx < paths.size(); ++idx) {
+               if (idx > 0 || ph) os << s;
                if (quote) os << "'";
-               os << it->second[i];
+               os << paths[idx];
                if (quote) os << "'";
-               if (annotate) os << annotate(it->second[i]);
+               if (annotate) os << annotate(paths[idx]);
             }
             os << std::endl;
          }
