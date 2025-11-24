@@ -42,7 +42,7 @@
 // will provide help on using the program
 
 #if !defined(__KUA_VERSION)
-#define __KUA_VERSION "1.1.1"
+#define __KUA_VERSION "1.1.2"
 #endif
 
 #include <filei.h>
