@@ -1,4 +1,4 @@
-.TH KUA "1" "November 2007" "kua 1.0" "User Commands"
+.TH KUA "1" "November 2023" "kua 1.1.0" "User Commands"
 .SH NAME
 .TP
 \fBkua\fR \-
@@ -16,6 +16,9 @@ argument of -\fBf\fR. The files found will be printed on separate lines.
 
 .SH OPTIONS
 .TP
+\fB\-f\fR \fIfile\fR
+file to compare against
+.TP
 \fB\-i\fR
 ignore letter case
 .TP
@@ -28,8 +31,32 @@ do not ask the file system for file size
 \fB\-v\fR
 verbose output (prints stuff to stderr), verbose help
 .TP
+\fB\-m\fR \fImax\fR
+consider only the first \fImax\fR bytes in the hash
+.TP
+\fB\-s\fR \fIsep\fR
+separator (default SPACE)
+.TP
+\fB\-p\fR
+also print the hash value of the reference file before each match
+.TP
 \fB\-b\fR \fIsize\fR
 set internal buffer size (default 1024)
+.TP
+\fB\-a\fR \fIalg\fR
+hash algorithm: md5, sha1, sha256, b3, xxh64
+.TP
+\fB\-q\fR
+quote file names with single quotes
+.TP
+\fB\-V\fR
+print version and exit
+.TP
+\fB\-\-\fR\fIlong\fR
+long options mirror the short ones (for example \fB\-\-file\fR, \fB\-\-help\fR,
+\fB\-\-version\fR, \fB\-\-ignore\-case\fR, \fB\-\-ignore\-white\fR,
+\fB\-\-no\-size\fR, \fB\-\-verbose\fR, \fB\-\-max\fR, \fB\-\-separator\fR,
+\fB\-\-print\-hash\fR, \fB\-\-buffer\fR, \fB\-\-algorithm\fR, \fB\-\-quote\fR)
 .TP
 \fB\-h\fR
 this help (\fB-vh\fR more verbose help)
@@ -39,7 +66,8 @@ read file names from stdin, where each line contains one file name (this
 must also be the last option in the list)
 
 .SH OUTPUT
-The files found will be printed on separate lines.
+If \fB\-p\fR is set, the hash of the reference file is printed first,
+followed by matching file names separated by \fIsep\fR.
 
 .SH EXAMPLES
 .TP
@@ -67,7 +95,7 @@ White space ignoring comparison will not care about the file size and thus it
 is significantly slower.
 
 .SH VERSION
-1.0
+1.1.0
 
 .SH AUTHOR
 \(co Istv\*'an T. Hern\*'adv\*"olgyi, EU.EDGE LLC, 2007

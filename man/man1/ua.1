@@ -1,4 +1,4 @@
-.TH UA "1" "November 2007" "ua 1.0" "User Commands"
+.TH UA "1" "November 2023" "ua 1.1.0" "User Commands"
 .SH NAME
 .TP
 \fBua\fR \-
@@ -54,8 +54,30 @@ separator (default SPACE)
 \fB\-p\fR
 also print the hash value
 .TP
+\fB\-t\fR \fInum\fR
+number of threads to use (default: auto-detect)
+.TP
 \fB\-b\fR \fIsize\fR
 set internal buffer size (default 1024)
+.TP
+\fB\-M\fR
+disable adaptive milestone comparison
+.TP
+\fB\-F\fR
+ignore filename differences (process the same real path only once)
+.TP
+\fB\-L\fR
+annotate output with link type (symlink/hardlink)
+.TP
+\fB\-V\fR
+print version and exit
+.TP
+\fB\-\-\fR\fIlong\fR
+long options mirror the short ones (for example \fB\-\-help\fR, \fB\-\-version\fR,
+\fB\-\-ignore\-case\fR, \fB\-\-ignore\-white\fR, \fB\-\-no\-size\fR, \fB\-\-verbose\fR,
+\fB\-\-max\fR, \fB\-\-two\-stage\fR, \fB\-\-separator\fR, \fB\-\-print\-hash\fR,
+\fB\-\-buffer\fR, \fB\-\-algorithm\fR, \fB\-\-quote\fR, \fB\-\-threads\fR,
+\fB\-\-no\-milestone\fR, \fB\-\-ignore\-filename\fR, \fB\-\-annotate\-links\fR)
 .TP
 \fB\-h\fR
 this help (\fB-vh\fR more verbose help)
@@ -80,9 +102,13 @@ Calculation proceeds in three steps:
 prefix (given by \fB\-m\fR) of the files with the same byte count 
 and throw away the ones with unique prefix hash values
 .IP
+\fB2b\fR. Adaptive milestone comparison (enabled by default) progressively
+compares chunks using xxHash64 to eliminate non-matching files early; disable
+with \fB\-M\fR.
+.IP
 \fB3\fR. If there are exactly two matching files left in a subset after 
 filtering on size and prefix hash, then these two will be compared by byte;
-otherwise the files will go through a full MD5 hash;
+otherwise the files will go through the selected hash (\fB\-a\fR md5|sha1|sha256|b3|xxh64);
 and the ones with the same hash will be deemed identical.
 .PP
 \fB\-w\fR implies \fB\-n\fR, since the byte count is irrelevant information
@@ -147,7 +173,7 @@ first cluster based on the whitespace-free first 256 characters
 by commas (\fB\-s\fR\fI,\fR).
 
 .SH VERSION
-1.0,  \fBua\fR -h will tell you whether you have the hashed or the tree
+1.1.0,  \fBua\fR -h will tell you whether you have the hashed or the tree
 version.
 
 .SH AUTHOR
