@@ -55,8 +55,13 @@ Create a tarball for GitHub Releases after building:
   $ ./build.sh cmake                                   # or autotools
   $ ./scripts/make-release-tarball.sh --version v1.0.0
 
-The archive (ua-<version>-<os>-<arch>.tar.gz) is written to dist/ and
-includes binaries plus README/NEWS/ChangeLog/AUTHORS/COPYING/INSTALL.
+The archive (ua-<version>-<os>-<arch>.tar.gz) is written to dist/ and contains
+an install-ready layout:
+
+  usr/bin/ua
+  usr/bin/kua
+  usr/share/man/man1/{ua.1,kua.1}
+  usr/share/doc/ua/{README,NEWS,ChangeLog,AUTHORS,COPYING,INSTALL}
 
 PROJECT STRUCTURE:
 ==================

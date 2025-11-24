@@ -84,13 +84,15 @@ STAGE_DIR="${DIST_DIR}/${PREFIX}"
 TARBALL="${DIST_DIR}/${PREFIX}.tar.gz"
 
 rm -rf "$STAGE_DIR"
-mkdir -p "$STAGE_DIR/bin"
+mkdir -p "$STAGE_DIR/usr/bin"
+mkdir -p "$STAGE_DIR/usr/share/man/man1"
+mkdir -p "$STAGE_DIR/usr/share/doc/ua"
 
 found_bin=false
-copy_bin "$BUILD_DIR/ua" "$STAGE_DIR/bin" && found_bin=true
-copy_bin "$BUILD_DIR/kua" "$STAGE_DIR/bin" && found_bin=true
-copy_bin "$ROOT/ua" "$STAGE_DIR/bin" && found_bin=true
-copy_bin "$ROOT/kua" "$STAGE_DIR/bin" && found_bin=true
+copy_bin "$BUILD_DIR/ua" "$STAGE_DIR/usr/bin" && found_bin=true
+copy_bin "$BUILD_DIR/kua" "$STAGE_DIR/usr/bin" && found_bin=true
+copy_bin "$ROOT/ua" "$STAGE_DIR/usr/bin" && found_bin=true
+copy_bin "$ROOT/kua" "$STAGE_DIR/usr/bin" && found_bin=true
 
 if [[ "$found_bin" = false ]]; then
     echo "No binaries found (expected ua/kua). Build first, or point to --build-dir." >&2
@@ -100,7 +102,14 @@ fi
 # Include docs/license metadata
 for f in README NEWS ChangeLog AUTHORS COPYING INSTALL; do
     if [[ -f "$ROOT/$f" ]]; then
-        cp "$ROOT/$f" "$STAGE_DIR"/
+        cp "$ROOT/$f" "$STAGE_DIR/usr/share/doc/ua"/
+    fi
+done
+
+# Include man pages
+for m in "$ROOT"/man/man1/*.1; do
+    if [[ -f "$m" ]]; then
+        cp "$m" "$STAGE_DIR/usr/share/man/man1"/
     fi
 done
 
